@@ -1,0 +1,57 @@
+body {
+    font-family: Arial, sans-serif;
+    background: #f2f2f2;
+    padding: 40px;
+}
+
+.container {
+    max-width: 800px;
+    margin: auto;
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+label {
+    font-weight: bold;
+}
+
+textarea {
+    width: 100%;
+    min-height: 100px;
+    margin: 10px 0 20px;
+    padding: 10px;
+    box-sizing: border-box;
+    font-size: 15px;
+}
+
+.buttons {
+    margin-bottom: 20px;
+}
+
+button {
+    padding: 12px 18px;
+    margin: 5px;
+    cursor: pointer;
+}
+
+.box {
+    margin-top: 20px;
+    padding: 15px;
+    background: #f8f8f8;
+    border-radius: 8px;
+}
+
+#encrypted {
+    min-height: 140px;
+}
+
+#keyStatus {
+    font-weight: bold;
+}

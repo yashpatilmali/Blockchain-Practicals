@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RSA Encryption and Decryption</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>RSA Encryption & Decryption</h1>
+
+    <label>Enter Message</label>
+    <textarea id="message">Hello Blockchain</textarea>
+
+    <div class="buttons">
+        <button onclick="generateKeys()">Generate RSA Keys</button>
+        <button onclick="encryptMessage()">Encrypt</button>
+        <button onclick="decryptMessage()">Decrypt</button>
+    </div>
+
+    <div class="box">
+        <h3>Public Key Status</h3>
+        <p id="keyStatus">Keys not generated</p>
+    </div>
+
+    <div class="box">
+        <h3>Encrypted Message</h3>
+        <textarea id="encrypted" readonly></textarea>
+    </div>
+
+    <div class="box">
+        <h3>Decrypted Message</h3>
+        <textarea id="decrypted" readonly></textarea>
+    </div>
+
+</div>
+
+<script src="script.js"></script>
+
+</body>
+</html>

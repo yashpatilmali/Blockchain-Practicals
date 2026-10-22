@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Blockchain & Merkle Tree Simulator</title>
+<style>
+body{font-family:Arial,sans-serif;background:#f2f2f2;margin:0;padding:30px}
+.container{max-width:1000px;margin:auto;background:#fff;padding:30px;border-radius:12px}
+h1{text-align:center}
+button{padding:12px 18px;margin:6px;cursor:pointer}
+.card{margin-top:20px;padding:20px;background:#f8f8f8;border-radius:10px}
+.hash{word-break:break-all;font-family:monospace;font-size:13px}
+.success{color:green;font-weight:bold}
+.danger{color:red;font-weight:bold}
+.tx{padding:10px;margin:8px 0;background:white;border:1px solid #ddd;border-radius:6px}
+</style>
+</head>
+<body>
+
+<div class="container">
+<h1>Blockchain & Merkle Tree Simulator</h1>
+
+<div>
+<button onclick="createBlockchain()">Create Blockchain</button>
+<button onclick="tamperTransaction()">Tamper Transaction</button>
+</div>
+
+<div id="output" class="card">
+Click "Create Blockchain" to generate the blockchain.
+</div>
+</div>
+
+<script>
+let blockchain = [];
+
+async function sha256(text){
+    const data = new TextEncoder().encode(text);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+    return Array.from(new Uint8Array(hashBuffer))
+        .map(b => b.toString(16).padStart(2,"0"))
+        .join("");
+}
+
+async function merkleRoot(transactions){
+    let level = [];
+
+    for(const tx of transactions){
+        level.push(await sha256(tx));
+    }
+
+    while(level.length > 1){
+        const next = [];
+
+        for(let i=0;i<level.length;i+=2){
+            const left = level[i];
+            const right = level[i+1] || left;
+            next.push(await sha256(left + right));
+        }
+
+        level = next;
+    }
+
+    return level[0];
+}
+
+async function createBlockchain(){
+
+    blockchain = [
+        {
+            index: 1,
+            transactions: [
+                "Alice pays Bob 10 ETH",
+                "Bob pays Carol 5 ETH",
+                "Carol pays Dave 2 ETH"
+            ]
+        },
+        {
+            index: 2,
+            transactions: [
+                "Dave pays Alice 1 ETH",
+                "Alice pays Carol 3 ETH",
+                "Bob pays Dave 4 ETH"
+            ]
+        }
+    ];
+
+    for(const block of blockchain){
+        block.merkleRoot = await merkleRoot(block.transactions);
+    }
+
+    displayBlockchain();
+}
+
+async function tamperTransaction(){
+
+    if(blockchain.length === 0){
+        alert("Create the blockchain first.");
+        return;
+    }
+
+    blockchain[0].transactions[0] = "Alice pays Bob 999 ETH";
+
+    const oldRoot = blockchain[0].merkleRoot;
+    const newRoot = await merkleRoot(blockchain[0].transactions);
+
+    blockchain[0].newRoot = newRoot;
+    blockchain[0].tampered = oldRoot !== newRoot;
+
+    displayBlockchain();
+}
+
+function displayBlockchain(){
+
+    let html = "";
+
+    for(const block of blockchain){
+
+        html += `
+        <div class="card">
+            <h2>Block ${block.index}</h2>
+
+            <h3>Transactions</h3>
+        `;
+
+        block.transactions.forEach((tx,i)=>{
+            html += `
+            <div class="tx">
+                <b>Transaction ${i+1}:</b> ${tx}
+            </div>
+            `;
+        });
+
+        html += `
+            <h3>Original Merkle Root</h3>
+            <div class="hash">${block.merkleRoot}</div>
+        `;
+
+        if(block.tampered){
+
+            html += `
+            <h3>New Merkle Root After Tampering</h3>
+            <div class="hash">${block.newRoot}</div>
+
+            <p class="danger">
+            ⚠ TRANSACTION TAMPERING DETECTED
+            </p>
+
+            <p class="danger">
+            Blockchain integrity has been affected because the Merkle Root changed.
+            </p>
+            `;
+        }
+        else{
+            html += `
+            <p class="success">
+            ✓ Blockchain integrity is valid.
+            </p>
+            `;
+        }
+
+        html += `</div>`;
+    }
+
+    document.getElementById("output").innerHTML = html;
+}
+</script>
+
+</body>
+</html>

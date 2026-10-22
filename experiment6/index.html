@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Ethereum RLP Transaction Encoder</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f2f2f2;
+            padding: 40px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        .field {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            border: 1px solid #aaa;
+            border-radius: 5px;
+        }
+
+        button {
+            padding: 12px 20px;
+            margin-top: 10px;
+            cursor: pointer;
+        }
+
+        .result {
+            margin-top: 25px;
+            padding: 15px;
+            background: #f8f8f8;
+            border-radius: 8px;
+            word-break: break-all;
+        }
+
+        .success {
+            color: green;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>Ethereum RLP Transaction Encoder</h1>
+
+    <div class="field">
+        <label>Nonce</label>
+        <input id="nonce" value="9">
+    </div>
+
+    <div class="field">
+        <label>Gas Price</label>
+        <input id="gasPrice" value="20000000000">
+    </div>
+
+    <div class="field">
+        <label>Gas Limit</label>
+        <input id="gasLimit" value="21000">
+    </div>
+
+    <div class="field">
+        <label>To Address</label>
+        <input
+            id="to"
+            value="0x3535353535353535353535353535353535353535">
+    </div>
+
+    <div class="field">
+        <label>Value</label>
+        <input id="value" value="1000000000000000000">
+    </div>
+
+    <div class="field">
+        <label>Data</label>
+        <input id="data" value="">
+    </div>
+
+    <button onclick="encodeTransaction()">
+        Encode Transaction
+    </button>
+
+    <div class="result">
+
+        <h3>Transaction Fields</h3>
+
+        <p id="fields"></p>
+
+        <h3>RLP Encoded Transaction</h3>
+
+        <p id="encoded"></p>
+
+        <p id="status"></p>
+
+    </div>
+
+</div>
+
+
+<script>
+
+function remove0x(value) {
+
+    if (value.startsWith("0x")) {
+        return value.slice(2);
+    }
+
+    return value;
+}
+
+
+function hexToBytes(hex) {
+
+    hex = remove0x(hex);
+
+    if (hex.length === 0) {
+        return new Uint8Array([]);
+    }
+
+    if (hex.length % 2 !== 0) {
+        hex = "0" + hex;
+    }
+
+    const bytes = [];
+
+    for (let i = 0; i < hex.length; i += 2) {
+
+        bytes.push(
+            parseInt(hex.substring(i, i + 2), 16)
+        );
+    }
+
+    return new Uint8Array(bytes);
+}
+
+
+function numberToBytes(number) {
+
+    if (Number(number) === 0) {
+        return new Uint8Array([]);
+    }
+
+    let hex = BigInt(number).toString(16);
+
+    if (hex.length % 2 !== 0) {
+        hex = "0" + hex;
+    }
+
+    return hexToBytes(hex);
+}
+
+
+function bytesToHex(bytes) {
+
+    return Array.from(bytes)
+        .map(b => b.toString(16).padStart(2, "0"))
+        .join("");
+}
+
+
+function concatBytes(...arrays) {
+
+    let totalLength = 0;
+
+    for (const arr of arrays) {
+        totalLength += arr.length;
+    }
+
+    const result = new Uint8Array(totalLength);
+
+    let offset = 0;
+
+    for (const arr of arrays) {
+
+        result.set(arr, offset);
+
+        offset += arr.length;
+    }
+
+    return result;
+}
+
+
+function encodeLength(length, offset) {
+
+    if (length <= 55) {
+
+        return new Uint8Array([
+            offset + length
+        ]);
+
+    }
+
+    const hex = length.toString(16);
+
+    const lengthBytes = hexToBytes(hex);
+
+    return concatBytes(
+        new Uint8Array([
+            offset + 55 + lengthBytes.length
+        ]),
+        lengthBytes
+    );
+}
+
+
+function rlpEncode(input) {
+
+    if (input instanceof Uint8Array) {
+
+        // Single byte between 0x00 and 0x7f
+        if (
+            input.length === 1 &&
+            input[0] <= 0x7f
+        ) {
+            return input;
+        }
+
+        // String/byte array
+        if (input.length <= 55) {
+
+            return concatBytes(
+                new Uint8Array([
+                    0x80 + input.length
+                ]),
+                input
+            );
+        }
+
+        return concatBytes(
+            encodeLength(input.length, 0xb7),
+            input
+        );
+    }
+
+    // Encode list
+    const encodedItems = input.map(item =>
+        rlpEncode(item)
+    );
+
+    const payload = concatBytes(...encodedItems);
+
+    if (payload.length <= 55) {
+
+        return concatBytes(
+            new Uint8Array([
+                0xc0 + payload.length
+            ]),
+            payload
+        );
+    }
+
+    return concatBytes(
+        encodeLength(payload.length, 0xf7),
+        payload
+    );
+}
+
+
+function encodeTransaction() {
+
+    try {
+
+        const nonce =
+            document.getElementById("nonce").value;
+
+        const gasPrice =
+            document.getElementById("gasPrice").value;
+
+        const gasLimit =
+            document.getElementById("gasLimit").value;
+
+        const to =
+            document.getElementById("to").value;
+
+        const value =
+            document.getElementById("value").value;
+
+        const data =
+            document.getElementById("data").value;
+
+        const transaction = [
+
+            numberToBytes(nonce),
+
+            numberToBytes(gasPrice),
+
+            numberToBytes(gasLimit),
+
+            hexToBytes(to),
+
+            numberToBytes(value),
+
+            hexToBytes(data)
+        ];
+
+        const encoded =
+            rlpEncode(transaction);
+
+        document.getElementById("fields").innerHTML = `
+            Nonce: ${nonce}<br>
+            Gas Price: ${gasPrice}<br>
+            Gas Limit: ${gasLimit}<br>
+            To: ${to}<br>
+            Value: ${value}<br>
+            Data: ${data || "Empty"}
+        `;
+
+        document.getElementById("encoded").textContent =
+            bytesToHex(encoded);
+
+        document.getElementById("status").innerHTML =
+            '<span class="success">RLP encoding completed successfully.</span>';
+
+    } catch (error) {
+
+        document.getElementById("status").textContent =
+            "Error: " + error.message;
+    }
+}
+
+</script>
+
+</body>
+</html>
